@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Snippet Line Extractor</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom Scrollbar for dark theme text areas */
+        textarea::-webkit-scrollbar {
+            width: 10px;
+        }
+        textarea::-webkit-scrollbar-track {
+            background: #111827; /* Darkest background */
+            border-radius: 8px;
+        }
+        textarea::-webkit-scrollbar-thumb {
+            background-color: #374151; /* Gray-700 */
+            border-radius: 8px;
+            border: 2px solid #1f2937;
+        }
+
+        /* Set Inter font and dark background */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827; /* Darkest Blue/Gray */
+        }
+        
+        /* Custom style for the input file button */
+        .file-input-label {
+            cursor: pointer;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            transition: all 0.2s;
+            font-weight: 600;
+        }
+
+        /* Ensure line number area matches line height and uses monospace font for alignment */
+        #line-numbers, #input-code {
+            line-height: 1.5; 
+            font-family: monospace;
+            font-size: 0.875rem; /* text-sm */
+            padding-top: 1rem; /* Match p-4 */
+            padding-bottom: 1rem; /* Match p-4 */
+            height: 100%; /* Important for flex layout */
+        }
+
+        /* Styling and configuration for the line number column */
+        #line-numbers {
+            width: 3.5rem; /* Slightly wider for longer line counts */
+            padding-right: 0.5rem; 
+            overflow: hidden !important; /* Hide scrollbar */
+            pointer-events: none; /* Make it unselectable/uninteractable */
+            text-align: right;
+            border-right: 1px solid #1f2937; /* Separator line */
+            -webkit-box-sizing: border-box; 
+            -moz-box-sizing: border-box;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body class="min-h-screen text-white p-4 md:p-8">
+
+    <!-- Back Button (Dark Green) -->
+    <a href="https://hencheng2.github.io/all/" class="inline-flex items-center space-x-2 p-2 rounded-lg bg-green-700 hover:bg-green-600 transition duration-200 mb-6">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clip-rule="evenodd" />
+        </svg>
+        <span>Back</span>
+    </a>
+    
+    <div class="max-w-7xl mx-auto">
+        <h1 class="text-3xl md:text-4xl font-extrabold text-orange-400 mb-6 border-b border-gray-700 pb-3">
+            Code Line Extractor Tool
+        </h1>
+
+        <!-- Controls Panel -->
+        <div class="bg-gray-800 rounded-xl p-4 md:p-6 mb-8 shadow-2xl">
+            <h2 class="text-xl font-semibold text-white mb-4">Controls & Line Selection</h2>
+            
+            <!-- Search Input and Paste to Input -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
+                
+                <!-- Search Controls (Next/Previous/Search) -->
+                <div class="flex items-center space-x-2 md:col-span-2">
+                    <input type="text" id="search-input" placeholder="Search keyword..." 
+                           class="flex-grow p-2 rounded-lg bg-gray-700 text-white border-2 border-gray-600 focus:border-orange-400 focus:outline-none transition" 
+                           onkeyup="if(event.key === 'Enter') searchAndScroll(0)">
+                           
+                    <button onclick="goToPreviousMatch()" id="prev-match-btn" disabled 
+                            class="p-2 rounded-lg bg-gray-600 hover:bg-gray-500 text-white transition duration-200 disabled:opacity-50" title="Previous Match">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
+                    </button>
+                    
+                    <button onclick="goToNextMatch()" id="next-match-btn" disabled 
+                            class="p-2 rounded-lg bg-gray-600 hover:bg-gray-500 text-white transition duration-200 disabled:opacity-50" title="Next Match">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
+                    </button>
+                </div>
+                
+                <!-- Paste to Input Button -->
+                <button onclick="pasteToInputArea()" class="px-6 py-3 rounded-xl font-bold text-lg bg-green-700 hover:bg-green-600 transition duration-200 shadow-md transform hover:scale-[1.02]">
+                    Paste (Clipboard) to Input
+                </button>
+            </div>
+            
+            <p id="match-status" class="text-sm text-gray-400 mb-4 ml-2">Search Status: No active search.</p>
+
+
+            <!-- Line Selection and File Upload -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                <!-- File Upload -->
+                <div class="flex flex-col">
+                    <label class="text-sm font-medium text-gray-400 mb-2">Upload File</label>
+                    <label for="file-upload" class="file-input-label bg-gray-700 hover:bg-gray-600 text-white text-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.414l1.379-.548 4.758-2.185c.415-.19.839-.425 1.229-.681.339-.234.619-.481.85-.717.227-.227.397-.478.498-.716l2.188-4.76 4.606-1.379a1 1 0 00-.012-1.409l-7-14z" />
+                        </svg>
+                        Choose File
+                    </label>
+                    <input type="file" id="file-upload" class="hidden" onchange="handleFileUpload(event)">
+                </div>
+
+                <!-- Start Line -->
+                <div>
+                    <label for="start-line" class="text-sm font-medium text-gray-400 mb-2 block">Start Line</label>
+                    <input type="number" id="start-line" value="1" min="1" class="w-full p-2 rounded-lg bg-gray-700 text-white border-2 border-gray-600 focus:border-orange-400 focus:outline-none transition" />
+                </div>
+
+                <!-- End Line -->
+                <div>
+                    <label for="end-line" class="text-sm font-medium text-gray-400 mb-2 block">End Line</label>
+                    <input type="number" id="end-line" value="1" min="1" class="w-full p-2 rounded-lg bg-gray-700 text-white border-2 border-gray-600 focus:border-orange-400 focus:outline-none transition" />
+                </div>
+
+                <!-- Copy Button -->
+                <button onclick="copySelectedLines()" class="px-6 py-3 rounded-xl font-bold text-lg bg-orange-600 hover:bg-orange-500 transition duration-200 shadow-md transform hover:scale-[1.02] col-span-1 md:col-span-1">
+                    Copy Selection
+                </button>
+            </div>
+
+            <!-- Status/Error Message -->
+            <div id="message-box" class="mt-4 text-center p-3 rounded-lg hidden"></div>
+        </div>
+
+        <!-- Code Areas -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            
+            <!-- Input Area with Line Numbers -->
+            <div class="flex flex-col">
+                <label class="text-xl font-semibold text-white mb-3">1. Input Code (Paste or Upload)</label>
+                <div class="relative flex border-2 border-gray-700 rounded-xl overflow-hidden shadow-xl" style="height: 300px;">
+                    <!-- Line Numbers Column (Readonly) -->
+                    <textarea id="line-numbers" rows="15" class="p-4 text-gray-500 bg-gray-800 text-sm resize-none" readonly></textarea>
+                    
+                    <!-- Code Input Column -->
+                    <textarea id="input-code" rows="15" oninput="updateAll(this.value)" onscroll="syncScroll(this)"
+                              class="flex-1 p-4 bg-gray-900 text-white text-sm focus:border-orange-400 focus:outline-none resize-none"
+                              placeholder="Paste your long code, script, or text content here..."></textarea>
+                </div>
+                <p class="text-sm text-gray-500 mt-2">Total Lines: <span id="line-count">0</span></p>
+            </div>
+
+            <!-- Output Area -->
+            <div class="flex flex-col">
+                <label for="output-code" class="text-xl font-semibold text-white mb-3">2. Selected Snippet Output</label>
+                <textarea id="output-code" rows="15" readonly
+                          class="w-full p-4 rounded-xl bg-gray-900 border-2 border-gray-700 text-orange-400 text-sm focus:border-orange-400 focus:outline-none resize-none transition"
+                          placeholder="The selected lines will appear here. The formatting (line breaks, spacing) is preserved."></textarea>
+                <button onclick="pasteToOutput()" class="mt-4 px-6 py-3 rounded-xl font-bold text-lg bg-green-700 hover:bg-green-600 transition duration-200 shadow-md transform hover:scale-[1.02]">
+                    Paste to Output Area
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Global State for Search
+        let lastCopiedContent = "";
+        let currentSearchMatches = [];
+        let currentMatchIndex = -1;
+        let currentSearchTerm = "";
+
+        // Approximate line height for text-sm (14px) and line-height 1.5
+        const LINE_HEIGHT_PIXELS = 21; 
+
+        /**
+         * Utility function to display messages to the user.
+         */
+        function displayMessage(message, type) {
+            const box = document.getElementById('message-box');
+            box.textContent = message;
+            box.className = 'mt-4 text-center p-3 rounded-lg transition-all duration-300'; // Reset classes
+            
+            switch (type) {
+                case 'success':
+                    box.classList.add('bg-green-800', 'text-green-300', 'shadow-green-900/50');
+                    break;
+                case 'error':
+                    box.classList.add('bg-red-800', 'text-red-300', 'shadow-red-900/50');
+                    break;
+                case 'info':
+                default:
+                    box.classList.add('bg-blue-800', 'text-blue-300', 'shadow-blue-900/50');
+                    break;
+            }
+            box.classList.remove('hidden');
+            // Hide the message after 5 seconds
+            setTimeout(() => {
+                box.classList.add('hidden');
+            }, 5000);
+        }
+
+        /**
+         * Function to escape special regex characters
+         */
+        function escapeRegExp(string) {
+            return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        /**
+         * Updates all related fields (line count, line numbers) and resets search state.
+         * This function is bound to the input event of the main textarea.
+         * @param {string} content - The text content of the textarea.
+         */
+        function updateAll(content) {
+            const lines = content.split('\n');
+            const totalLines = lines.length || 1; 
+
+            // 1. Update Line Count Display & Max Input
+            document.getElementById('line-count').textContent = totalLines;
+            document.getElementById('end-line').setAttribute('max', totalLines);
+
+            // 2. Generate and Update Line Numbers Column
+            const lineNumberArea = document.getElementById('line-numbers');
+            let lineNumbers = Array.from({ length: totalLines }, (_, i) => i + 1).join('\n');
+            lineNumberArea.value = lineNumbers;
+            
+            // 3. Reset search state on input change
+            currentSearchMatches = [];
+            currentMatchIndex = -1;
+            currentSearchTerm = "";
+            document.getElementById('match-status').textContent = "Search Status: No active search.";
+            document.getElementById('prev-match-btn').disabled = true;
+            document.getElementById('next-match-btn').disabled = true;
+        }
+
+        /**
+         * Synchronizes the scroll position of the line numbers column with the code input area.
+         */
+        function syncScroll(element) {
+            const lineNumberArea = document.getElementById('line-numbers');
+            lineNumberArea.scrollTop = element.scrollTop;
+        }
+
+        /**
+         * Helper function to scroll to the match and highlight the keyword.
+         */
+        function scrollToAndHighlight(match) {
+            const inputCodeArea = document.getElementById('input-code');
+            const lineNumberArea = document.getElementById('line-numbers');
+            
+            // Calculate scroll position (Line index * fixed line height)
+            const scrollTarget = match.lineNumber * LINE_HEIGHT_PIXELS; 
+
+            // Set the scroll position for both areas
+            inputCodeArea.scrollTop = scrollTarget;
+            lineNumberArea.scrollTop = scrollTarget;
+            
+            // Highlight the text (crucial for "exact keyword into view")
+            const startIndex = match.charIndex;
+            const endIndex = startIndex + currentSearchTerm.length;
+
+            // Use a small timeout to ensure the browser has finished scrolling 
+            // before attempting to select and bring into view.
+            setTimeout(() => {
+                inputCodeArea.focus();
+                inputCodeArea.setSelectionRange(startIndex, endIndex);
+            }, 50);
+
+            // Update line inputs for easy selection
+            const lineNum = match.lineNumber + 1; // 1-indexed
+            document.getElementById('start-line').value = lineNum;
+            document.getElementById('end-line').value = lineNum;
+
+            // Update status
+            document.getElementById('match-status').textContent = `Match ${currentMatchIndex + 1} of ${currentSearchMatches.length}`;
+        }
+
+        /**
+         * Searches for a keyword, finds all matches, and scrolls to the first one.
+         * If direction is provided (1 or -1), it navigates to the next/previous match.
+         * @param {number} direction - 0 for new search, 1 for next, -1 for previous.
+         */
+        function searchAndScroll(direction) {
+            const searchTerm = document.getElementById('search-input').value.trim();
+            const inputCodeArea = document.getElementById('input-code');
+
+            if (!searchTerm) {
+                displayMessage('Please enter a keyword to search.', 'info');
+                updateAll(inputCodeArea.value);
+                return;
+            }
+
+            // 1. New Search logic
+            if (searchTerm !== currentSearchTerm || currentSearchMatches.length === 0 || direction === 0) {
+                currentSearchTerm = searchTerm;
+                currentSearchMatches = [];
+                currentMatchIndex = -1;
+                const content = inputCodeArea.value;
+
+                // Find all matches, storing 0-indexed line number and 1D char index
+                let charIndex = 0;
+                const lines = content.split('\n');
+                
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i];
+                    let lineMatch;
+                    // Use a new regex instance for each line iteration
+                    const lineRe = new RegExp(escapeRegExp(searchTerm), 'gi');
+                    
+                    while ((lineMatch = lineRe.exec(line)) !== null) {
+                        currentSearchMatches.push({
+                            lineNumber: i, 
+                            charIndex: charIndex + lineMatch.index 
+                        });
+                    }
+                    // +1 accounts for the newline character, moving charIndex to the start of the next line
+                    charIndex += line.length + 1; 
+                }
+
+                if (currentSearchMatches.length === 0) {
+                    displayMessage(`Keyword "${searchTerm}" not found.`, 'error');
+                    document.getElementById('match-status').textContent = `Search Status: 0 matches found for "${searchTerm}".`;
+                    document.getElementById('prev-match-btn').disabled = true;
+                    document.getElementById('next-match-btn').disabled = true;
+                    return;
+                }
+
+                currentMatchIndex = 0; // Start at the first match
+                document.getElementById('prev-match-btn').disabled = false;
+                document.getElementById('next-match-btn').disabled = false;
+
+            } else {
+                // 2. Navigation logic (Next/Previous)
+                if (direction === 1) { // Next
+                    currentMatchIndex = (currentMatchIndex + 1) % currentSearchMatches.length;
+                } else if (direction === -1) { // Previous
+                    currentMatchIndex = (currentMatchIndex - 1 + currentSearchMatches.length) % currentSearchMatches.length;
+                }
+            }
+            
+            // Execute scroll and highlight
+            scrollToAndHighlight(currentSearchMatches[currentMatchIndex]);
+        }
+        
+        /**
+         * Navigates to the next match.
+         */
+        function goToNextMatch() {
+            if (currentSearchMatches.length > 0) {
+                searchAndScroll(1); // Direction 1 for next
+            } else {
+                searchAndScroll(0); // If no active search, start a new search
+            }
+        }
+
+        /**
+         * Navigates to the previous match.
+         */
+        function goToPreviousMatch() {
+            if (currentSearchMatches.length > 0) {
+                searchAndScroll(-1); // Direction -1 for previous
+            } else {
+                searchAndScroll(0); // If no active search, start a new search
+            }
+        }
+
+        /**
+         * Reads the content of an uploaded file and loads it into the input area.
+         */
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const content = e.target.result;
+                const inputCodeArea = document.getElementById('input-code');
+                inputCodeArea.value = content;
+                updateAll(content); 
+                displayMessage(`Successfully loaded file: ${file.name}`, 'success');
+            };
+            reader.onerror = function() {
+                displayMessage('Error reading file.', 'error');
+            };
+            reader.readAsText(file);
+        }
+
+        /**
+         * Pastes content from the system clipboard directly into the Input Area.
+         */
+        async function pasteToInputArea() {
+            const inputCodeArea = document.getElementById('input-code');
+            try {
+                const text = await navigator.clipboard.readText();
+                inputCodeArea.value = text;
+                updateAll(text);
+                displayMessage('Successfully pasted content from clipboard into the input area!', 'success');
+            } catch (err) {
+                displayMessage('Failed to read from clipboard. Please ensure you have granted clipboard permissions and try pasting manually (Ctrl+V/Cmd+V).', 'error');
+            }
+        }
+
+        /**
+         * Extracts lines based on user input, copies them to the clipboard,
+         * and stores them in a global variable for the paste function.
+         */
+        async function copySelectedLines() {
+            const inputCodeArea = document.getElementById('input-code');
+            const startLineInput = document.getElementById('start-line');
+            const endLineInput = document.getElementById('end-line');
+            
+            const content = inputCodeArea.value;
+            if (!content) {
+                displayMessage('Input area is empty. Please paste or upload code first.', 'error');
+                return;
+            }
+
+            const lines = content.split('\n');
+            const totalLines = lines.length;
+            const startLine = parseInt(startLineInput.value) || 1;
+            const endLine = parseInt(endLineInput.value) || totalLines;
+
+            if (isNaN(startLine) || isNaN(endLine) || startLine < 1 || endLine < 1 || startLine > totalLines || endLine > totalLines) {
+                displayMessage(`Invalid line numbers. Max lines available: ${totalLines}.`, 'error');
+                return;
+            }
+            if (startLine > endLine) {
+                 displayMessage('Start line must be less than or equal to End line.', 'error');
+                return;
+            }
+            
+            // Extract the slice (preserves original line breaks)
+            const selectedLines = lines.slice(startLine - 1, endLine);
+            const textToCopy = selectedLines.join('\n');
+            
+            try {
+                // 1. Copy to the system clipboard
+                await navigator.clipboard.writeText(textToCopy);
+                
+                // 2. Store the content for the paste button functionality
+                lastCopiedContent = textToCopy;
+
+                displayMessage(`Copied lines ${startLine} to ${endLine} (${selectedLines.length} lines) to clipboard!`, 'success');
+                
+            } catch (err) {
+                // Fallback for restricted environments
+                displayMessage('Clipboard access denied. The selection is ready for "Paste to Output Area".', 'error');
+                lastCopiedContent = textToCopy;
+            }
+        }
+
+        /**
+         * Pastes the last successfully copied content into the output area, preserving formatting.
+         */
+        function pasteToOutput() {
+            const outputCodeArea = document.getElementById('output-code');
+            if (lastCopiedContent) {
+                outputCodeArea.value = lastCopiedContent;
+                displayMessage('Successfully pasted the selection into the Output Area, preserving original formatting!', 'success');
+            } else {
+                displayMessage('No content has been successfully copied yet. Use the "Copy Selection" button first.', 'info');
+            }
+        }
+
+        // Initialize line count and numbers on load
+        window.onload = () => {
+            const initialContent = document.getElementById('input-code').value;
+            updateAll(initialContent);
+            document.getElementById('start-line').value = 1;
+            document.getElementById('end-line').value = 1;
+            
+            // Reassign the search button action to the full searchAndScroll for clarity
+            document.getElementById('search-input').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    searchAndScroll(0); // 0 means start a new search
+                }
+            });
+        };
+
+    </script>
+</body>
+</html>
+
