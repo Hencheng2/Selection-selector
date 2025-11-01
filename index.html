@@ -37,36 +37,45 @@
         }
 
         /* --- CRITICAL ALIGNMENT STYLES --- */
-        /* Set the smallest font size (text-xs / 12px) and monospace font for perfect alignment */
+        /* Ensures line numbers, input, and output use a fixed-width font with uniform line height */
         #line-numbers, #input-code, #output-code {
             line-height: 1.5; 
             font-family: monospace;
             font-size: 0.75rem; /* text-xs (12px) for maximum code density and alignment */
-            padding-top: 1rem; /* Match p-4 */
-            padding-bottom: 1rem; /* Match p-4 */
-            height: 100%; /* Important for flex layout */
+            padding-top: 1rem; 
+            padding-bottom: 1rem; 
+            height: 100%;
+            /* Explicitly set the line height again for better browser consistency */
+            line-height: 18px; 
+            padding: 1rem; /* Ensure consistent padding across all areas */
         }
 
         /* CRITICAL: Prevents text wrapping and forces horizontal scroll for code integrity */
         #input-code {
             white-space: pre; 
-            overflow: auto; /* Ensures both scrollbars appear if content exceeds bounds */
+            overflow: auto; /* Enables both vertical and horizontal scrollbars */
+            padding-left: 0; /* Adjust padding due to line numbers sharing space */
         }
 
         /* Styling and configuration for the line number column */
         #line-numbers {
             width: 3.5rem; 
             padding-right: 0.5rem; 
-            overflow: hidden !important; /* Hide scrollbar for line numbers */
+            padding-left: 1rem; /* Visual padding for alignment */
+            overflow: hidden !important; 
             pointer-events: none;
             text-align: right;
             border-right: 1px solid #1f2937;
             -webkit-box-sizing: border-box; 
             -moz-box-sizing: border-box;
             box-sizing: border-box;
+            /* Match the line height exactly */
+            line-height: 18px; 
+            padding-top: 1rem; 
+            padding-bottom: 1rem; 
         }
 
-        /* Output area must also be monospace for alignment preservation */
+        /* Output area uses the same fixed-width styles */
         #output-code {
             font-size: 0.75rem;
         }
@@ -161,28 +170,44 @@
             
             <!-- Input Area with Line Numbers -->
             <div class="flex flex-col">
-                <label class="text-xl font-semibold text-white mb-3">1. Input Code (Paste or Upload)</label>
+                <div class="flex justify-between items-center mb-3">
+                    <label class="text-xl font-semibold text-white">1. Input Code</label>
+                    <button onclick="clearInput()" class="px-3 py-1 text-sm rounded-lg bg-red-700 hover:bg-red-600 transition duration-200 shadow-md">
+                        Clear Input
+                    </button>
+                </div>
                 <div class="relative flex border-2 border-gray-700 rounded-xl overflow-hidden shadow-xl" style="height: 300px;">
                     <!-- Line Numbers Column (Readonly) -->
-                    <textarea id="line-numbers" rows="15" class="p-4 text-gray-500 bg-gray-800 text-xs resize-none" readonly></textarea>
+                    <textarea id="line-numbers" rows="15" class="text-gray-500 bg-gray-800 text-xs resize-none" readonly></textarea>
                     
                     <!-- Code Input Column -->
                     <textarea id="input-code" rows="15" oninput="updateAll(this.value)" onscroll="syncScroll(this)"
-                              class="flex-1 p-4 bg-gray-900 text-white text-xs font-mono focus:border-orange-400 focus:outline-none resize-none"
-                              placeholder="Paste your long code, script, or text content here. Long lines will now scroll horizontally to maintain perfect alignment."></textarea>
+                              class="flex-1 bg-gray-900 text-white text-xs font-mono focus:border-orange-400 focus:outline-none resize-none"
+                              placeholder="Paste your code here. It won't wrap and will scroll horizontally."></textarea>
                 </div>
                 <p class="text-sm text-gray-500 mt-2">Total Lines: <span id="line-count">0</span></p>
             </div>
 
             <!-- Output Area -->
             <div class="flex flex-col">
-                <label for="output-code" class="text-xl font-semibold text-white mb-3">2. Selected Snippet Output</label>
+                <div class="flex justify-between items-center mb-3">
+                    <label for="output-code" class="text-xl font-semibold text-white">2. Selected Snippet Output</label>
+                    <button onclick="clearOutput()" class="px-3 py-1 text-sm rounded-lg bg-red-700 hover:bg-red-600 transition duration-200 shadow-md">
+                        Clear Output
+                    </button>
+                </div>
                 <textarea id="output-code" rows="15" readonly
                           class="w-full p-4 rounded-xl bg-gray-900 border-2 border-gray-700 text-orange-400 text-xs font-mono focus:border-orange-400 focus:outline-none resize-none transition"
                           placeholder="The extracted lines will appear here with original alignment preserved."></textarea>
-                <button onclick="pasteToOutput()" class="mt-4 px-6 py-3 rounded-xl font-bold text-lg bg-green-700 hover:bg-green-600 transition duration-200 shadow-md transform hover:scale-[1.02]">
-                    Paste to Output Area
-                </button>
+                
+                <div class="grid grid-cols-2 gap-4 mt-4">
+                    <button onclick="pasteToOutput()" class="px-6 py-3 rounded-xl font-bold text-lg bg-green-700 hover:bg-green-600 transition duration-200 shadow-md transform hover:scale-[1.02]">
+                        Paste Selection to Output
+                    </button>
+                    <button onclick="copyOutput()" class="px-6 py-3 rounded-xl font-bold text-lg bg-blue-700 hover:bg-blue-600 transition duration-200 shadow-md transform hover:scale-[1.02]">
+                        Copy Output Snippet
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -195,7 +220,7 @@
         let currentMatchIndex = -1;
         let currentSearchTerm = "";
 
-        // Calculated line height for text-xs (12px) and line-height 1.5. This is crucial for scroll accuracy.
+        // Calculated line height based on CSS (0.75rem font size, line-height 1.5). This is 12px * 1.5 = 18px.
         const LINE_HEIGHT_PIXELS = 18; 
 
         /**
@@ -238,6 +263,7 @@
          * @param {string} content - The text content of the textarea.
          */
         function updateAll(content) {
+            // content.split('\n') handles both \n and \r\n line endings correctly in most browsers/environments
             const lines = content.split('\n');
             const totalLines = lines.length || 1; 
 
@@ -260,10 +286,11 @@
         }
 
         /**
-         * Synchronizes the scroll position of the line numbers column with the code input area.
+         * Synchronizes the vertical scroll position of the line numbers column with the code input area.
          */
         function syncScroll(element) {
             const lineNumberArea = document.getElementById('line-numbers');
+            // CRITICAL FIX: Mirror the scroll top exactly for perfect alignment
             lineNumberArea.scrollTop = element.scrollTop;
         }
 
@@ -274,19 +301,22 @@
             const inputCodeArea = document.getElementById('input-code');
             const lineNumberArea = document.getElementById('line-numbers');
             
-            // Calculate scroll position (Line index * fixed line height)
+            // Calculate scroll position to center the line (subtract half the textarea height)
+            const areaHeight = inputCodeArea.clientHeight;
+            // Scroll target is relative to the START of the line
             const scrollTarget = match.lineNumber * LINE_HEIGHT_PIXELS; 
-
-            // Set the scroll position for both areas
-            inputCodeArea.scrollTop = scrollTarget;
-            lineNumberArea.scrollTop = scrollTarget;
             
-            // Highlight the text (crucial for "exact keyword into view")
+            // Adjust to center the line visually
+            const centeredScroll = scrollTarget - (areaHeight / 2) + (LINE_HEIGHT_PIXELS / 2);
+
+            // Set the scroll position for both areas, clamping at 0
+            inputCodeArea.scrollTop = Math.max(0, centeredScroll);
+            lineNumberArea.scrollTop = Math.max(0, centeredScroll);
+            
+            // Highlight the text
             const startIndex = match.charIndex;
             const endIndex = startIndex + currentSearchTerm.length;
 
-            // Use a small timeout to ensure the browser has finished scrolling 
-            // before attempting to select and bring into view.
             setTimeout(() => {
                 inputCodeArea.focus();
                 inputCodeArea.setSelectionRange(startIndex, endIndex);
@@ -302,8 +332,7 @@
         }
 
         /**
-         * Searches for a keyword, finds all matches, and scrolls to the first one.
-         * If direction is provided (1 or -1), it navigates to the next/previous match.
+         * Searches for a keyword, finds all matches, and navigates through them.
          * @param {number} direction - 0 for new search, 1 for next, -1 for previous.
          */
         function searchAndScroll(direction) {
@@ -330,7 +359,6 @@
                 for (let i = 0; i < lines.length; i++) {
                     const line = lines[i];
                     let lineMatch;
-                    // Use a new regex instance for each line iteration
                     const lineRe = new RegExp(escapeRegExp(searchTerm), 'gi');
                     
                     while ((lineMatch = lineRe.exec(line)) !== null) {
@@ -339,8 +367,7 @@
                             charIndex: charIndex + lineMatch.index 
                         });
                     }
-                    // +1 accounts for the newline character, moving charIndex to the start of the next line
-                    charIndex += line.length + 1; 
+                    charIndex += line.length + 1; // +1 accounts for the newline
                 }
 
                 if (currentSearchMatches.length === 0) {
@@ -369,26 +396,26 @@
             scrollToAndHighlight(currentSearchMatches[currentMatchIndex]);
         }
         
+        function goToNextMatch() { searchAndScroll(1); }
+        function goToPreviousMatch() { searchAndScroll(-1); }
+
         /**
-         * Navigates to the next match.
+         * Clears the input code area and resets related states.
          */
-        function goToNextMatch() {
-            if (currentSearchMatches.length > 0) {
-                searchAndScroll(1); // Direction 1 for next
-            } else {
-                searchAndScroll(0); // If no active search, start a new search
-            }
+        function clearInput() {
+            document.getElementById('input-code').value = '';
+            document.getElementById('search-input').value = '';
+            updateAll('');
+            displayMessage('Input area cleared!', 'info');
         }
 
         /**
-         * Navigates to the previous match.
+         * Clears the output code area and resets the last copied content.
          */
-        function goToPreviousMatch() {
-            if (currentSearchMatches.length > 0) {
-                searchAndScroll(-1); // Direction -1 for previous
-            } else {
-                searchAndScroll(0); // If no active search, start a new search
-            }
+        function clearOutput() {
+            document.getElementById('output-code').value = '';
+            lastCopiedContent = '';
+            displayMessage('Output area cleared!', 'info');
         }
 
         /**
@@ -428,8 +455,7 @@
         }
 
         /**
-         * Extracts lines based on user input, copies them to the clipboard,
-         * and stores them in a global variable for the paste function.
+         * Extracts lines based on user input, copies them to the global variable, and updates the output area.
          */
         async function copySelectedLines() {
             const inputCodeArea = document.getElementById('input-code');
@@ -460,34 +486,54 @@
             const selectedLines = lines.slice(startLine - 1, endLine);
             const textToCopy = selectedLines.join('\n');
             
-            try {
-                // 1. Copy to the system clipboard
-                await navigator.clipboard.writeText(textToCopy);
-                
-                // 2. Store the content for the paste button functionality
-                lastCopiedContent = textToCopy;
+            // 1. Store the content for the paste button functionality
+            lastCopiedContent = textToCopy;
+            document.getElementById('output-code').value = textToCopy;
 
+            try {
+                // 2. Copy to the system clipboard
+                await navigator.clipboard.writeText(textToCopy);
                 displayMessage(`Copied lines ${startLine} to ${endLine} (${selectedLines.length} lines) to clipboard!`, 'success');
                 
             } catch (err) {
                 // Fallback for restricted environments
-                displayMessage('Clipboard access denied. The selection is ready for "Paste to Output Area".', 'error');
-                lastCopiedContent = textToCopy;
+                displayMessage('Clipboard access denied. The selection has been placed in the Output Area.', 'error');
             }
         }
 
         /**
-         * Pastes the last successfully copied content into the output area, preserving formatting.
+         * Pastes the last successfully copied content into the output area (This is now redundant since `copySelectedLines` populates it, but kept for legacy/safety).
          */
         function pasteToOutput() {
             const outputCodeArea = document.getElementById('output-code');
             if (lastCopiedContent) {
                 outputCodeArea.value = lastCopiedContent;
-                displayMessage('Successfully pasted the selection into the Output Area, preserving original formatting!', 'success');
+                displayMessage('Pasted selection into the Output Area.', 'success');
             } else {
-                displayMessage('No content has been successfully copied yet. Use the "Copy Selection" button first.', 'info');
+                displayMessage('Please use the "Copy Selection" button first.', 'info');
             }
         }
+
+        /**
+         * Copies the content of the Output Area to the system clipboard.
+         */
+        async function copyOutput() {
+            const outputCodeArea = document.getElementById('output-code');
+            const textToCopy = outputCodeArea.value;
+
+            if (!textToCopy) {
+                displayMessage('Output area is empty. Nothing to copy.', 'info');
+                return;
+            }
+
+            try {
+                await navigator.clipboard.writeText(textToCopy);
+                displayMessage('Output snippet successfully copied to clipboard!', 'success');
+            } catch (err) {
+                displayMessage('Failed to copy. Please select the text manually (Ctrl+A, Ctrl+C).', 'error');
+            }
+        }
+
 
         // Initialize line count and numbers on load
         window.onload = () => {
@@ -496,10 +542,10 @@
             document.getElementById('start-line').value = 1;
             document.getElementById('end-line').value = 1;
             
-            // Reassign the search button action to the full searchAndScroll for clarity
+            // Add keypress listener for the search input
             document.getElementById('search-input').addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
-                    e.preventDefault(); // Prevent default form submission/newline creation
+                    e.preventDefault(); 
                     searchAndScroll(0); // 0 means start a new search
                 }
             });
