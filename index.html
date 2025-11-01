@@ -36,11 +36,11 @@
             font-weight: 600;
         }
 
-        /* Ensure line number area matches line height and uses monospace font for alignment */
+        /* Set the smaller font size (text-xs / 12px) and monospace font */
         #line-numbers, #input-code {
             line-height: 1.5; 
             font-family: monospace;
-            font-size: 0.875rem; /* text-sm */
+            font-size: 0.75rem; /* Reduced to text-xs (12px) for better code density */
             padding-top: 1rem; /* Match p-4 */
             padding-bottom: 1rem; /* Match p-4 */
             height: 100%; /* Important for flex layout */
@@ -48,12 +48,12 @@
 
         /* Styling and configuration for the line number column */
         #line-numbers {
-            width: 3.5rem; /* Slightly wider for longer line counts */
+            width: 3.5rem; 
             padding-right: 0.5rem; 
-            overflow: hidden !important; /* Hide scrollbar */
-            pointer-events: none; /* Make it unselectable/uninteractable */
+            overflow: hidden !important;
+            pointer-events: none;
             text-align: right;
-            border-right: 1px solid #1f2937; /* Separator line */
+            border-right: 1px solid #1f2937;
             -webkit-box-sizing: border-box; 
             -moz-box-sizing: border-box;
             box-sizing: border-box;
@@ -156,7 +156,7 @@
                     
                     <!-- Code Input Column -->
                     <textarea id="input-code" rows="15" oninput="updateAll(this.value)" onscroll="syncScroll(this)"
-                              class="flex-1 p-4 bg-gray-900 text-white text-sm focus:border-orange-400 focus:outline-none resize-none"
+                              class="flex-1 p-4 bg-gray-900 text-white text-xs focus:border-orange-400 focus:outline-none resize-none"
                               placeholder="Paste your long code, script, or text content here..."></textarea>
                 </div>
                 <p class="text-sm text-gray-500 mt-2">Total Lines: <span id="line-count">0</span></p>
@@ -183,8 +183,8 @@
         let currentMatchIndex = -1;
         let currentSearchTerm = "";
 
-        // Approximate line height for text-sm (14px) and line-height 1.5
-        const LINE_HEIGHT_PIXELS = 21; 
+        // Calculated line height for text-xs (12px) and line-height 1.5. This is crucial for scroll accuracy.
+        const LINE_HEIGHT_PIXELS = 18; 
 
         /**
          * Utility function to display messages to the user.
@@ -486,6 +486,7 @@
             // Reassign the search button action to the full searchAndScroll for clarity
             document.getElementById('search-input').addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
+                    e.preventDefault(); // Prevent default form submission/newline creation
                     searchAndScroll(0); // 0 means start a new search
                 }
             });
