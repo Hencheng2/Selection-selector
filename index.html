@@ -36,27 +36,39 @@
             font-weight: 600;
         }
 
-        /* Set the smaller font size (text-xs / 12px) and monospace font */
-        #line-numbers, #input-code {
+        /* --- CRITICAL ALIGNMENT STYLES --- */
+        /* Set the smallest font size (text-xs / 12px) and monospace font for perfect alignment */
+        #line-numbers, #input-code, #output-code {
             line-height: 1.5; 
             font-family: monospace;
-            font-size: 0.75rem; /* Reduced to text-xs (12px) for better code density */
+            font-size: 0.75rem; /* text-xs (12px) for maximum code density and alignment */
             padding-top: 1rem; /* Match p-4 */
             padding-bottom: 1rem; /* Match p-4 */
             height: 100%; /* Important for flex layout */
+        }
+
+        /* CRITICAL: Prevents text wrapping and forces horizontal scroll for code integrity */
+        #input-code {
+            white-space: pre; 
+            overflow: auto; /* Ensures both scrollbars appear if content exceeds bounds */
         }
 
         /* Styling and configuration for the line number column */
         #line-numbers {
             width: 3.5rem; 
             padding-right: 0.5rem; 
-            overflow: hidden !important;
+            overflow: hidden !important; /* Hide scrollbar for line numbers */
             pointer-events: none;
             text-align: right;
             border-right: 1px solid #1f2937;
             -webkit-box-sizing: border-box; 
             -moz-box-sizing: border-box;
             box-sizing: border-box;
+        }
+
+        /* Output area must also be monospace for alignment preservation */
+        #output-code {
+            font-size: 0.75rem;
         }
     </style>
 </head>
@@ -152,12 +164,12 @@
                 <label class="text-xl font-semibold text-white mb-3">1. Input Code (Paste or Upload)</label>
                 <div class="relative flex border-2 border-gray-700 rounded-xl overflow-hidden shadow-xl" style="height: 300px;">
                     <!-- Line Numbers Column (Readonly) -->
-                    <textarea id="line-numbers" rows="15" class="p-4 text-gray-500 bg-gray-800 text-sm resize-none" readonly></textarea>
+                    <textarea id="line-numbers" rows="15" class="p-4 text-gray-500 bg-gray-800 text-xs resize-none" readonly></textarea>
                     
                     <!-- Code Input Column -->
                     <textarea id="input-code" rows="15" oninput="updateAll(this.value)" onscroll="syncScroll(this)"
-                              class="flex-1 p-4 bg-gray-900 text-white text-xs focus:border-orange-400 focus:outline-none resize-none"
-                              placeholder="Paste your long code, script, or text content here..."></textarea>
+                              class="flex-1 p-4 bg-gray-900 text-white text-xs font-mono focus:border-orange-400 focus:outline-none resize-none"
+                              placeholder="Paste your long code, script, or text content here. Long lines will now scroll horizontally to maintain perfect alignment."></textarea>
                 </div>
                 <p class="text-sm text-gray-500 mt-2">Total Lines: <span id="line-count">0</span></p>
             </div>
@@ -166,8 +178,8 @@
             <div class="flex flex-col">
                 <label for="output-code" class="text-xl font-semibold text-white mb-3">2. Selected Snippet Output</label>
                 <textarea id="output-code" rows="15" readonly
-                          class="w-full p-4 rounded-xl bg-gray-900 border-2 border-gray-700 text-orange-400 text-sm focus:border-orange-400 focus:outline-none resize-none transition"
-                          placeholder="The selected lines will appear here. The formatting (line breaks, spacing) is preserved."></textarea>
+                          class="w-full p-4 rounded-xl bg-gray-900 border-2 border-gray-700 text-orange-400 text-xs font-mono focus:border-orange-400 focus:outline-none resize-none transition"
+                          placeholder="The extracted lines will appear here with original alignment preserved."></textarea>
                 <button onclick="pasteToOutput()" class="mt-4 px-6 py-3 rounded-xl font-bold text-lg bg-green-700 hover:bg-green-600 transition duration-200 shadow-md transform hover:scale-[1.02]">
                     Paste to Output Area
                 </button>
@@ -340,8 +352,9 @@
                 }
 
                 currentMatchIndex = 0; // Start at the first match
-                document.getElementById('prev-match-btn').disabled = false;
-                document.getElementById('next-match-btn').disabled = false;
+                const disableButtons = (currentSearchMatches.length <= 1);
+                document.getElementById('prev-match-btn').disabled = disableButtons;
+                document.getElementById('next-match-btn').disabled = disableButtons;
 
             } else {
                 // 2. Navigation logic (Next/Previous)
